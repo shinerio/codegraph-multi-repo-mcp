@@ -1,0 +1,13 @@
+settings:
+  codegraph_binary: codegraph
+  default_max_repos: 5
+  default_max_files: 8
+  per_repo_timeout_seconds: 20
+  max_concurrency: 4
+
+repos:
+  - name: eda
+    path: /Users/shinerio/Workspace/code/eda
+    description: EDA application repository
+    tags: [eda, java, workflow]
+    aliases: [eda-platform]
