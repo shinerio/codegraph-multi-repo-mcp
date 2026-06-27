@@ -8,11 +8,16 @@ version = "0.1.0"
 description = "Multi-repository CodeGraph orchestrator exposed as an MCP server"
 readme = "README.md"
 requires-python = ">=3.11"
+license = "MIT"
 dependencies = [
   "mcp>=1.0.0",
   "pydantic>=2.7.0",
   "PyYAML>=6.0.1",
 ]
+
+[project.urls]
+Repository = "https://github.com/shinerio/codegraph-multi-repo-mcp"
+Issues = "https://github.com/shinerio/codegraph-multi-repo-mcp/issues"
 
 [project.optional-dependencies]
 dev = [
