@@ -13,6 +13,7 @@ dependencies = [
   "mcp>=1.0.0",
   "pydantic>=2.7.0",
   "PyYAML>=6.0.1",
+  "uvicorn>=0.30.0",
 ]
 
 [project.urls]
@@ -27,6 +28,7 @@ dev = [
 
 [project.scripts]
 codegraph-multi-repo-mcp = "codegraph_multi_repo_mcp.server:main"
+codegraph-multi-repo-mcp-http = "codegraph_multi_repo_mcp.server:http_main"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

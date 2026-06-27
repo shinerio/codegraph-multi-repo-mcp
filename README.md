@@ -42,15 +42,37 @@ repos:
     aliases: [eda-platform]
 ```
 
-Run the MCP server with `uvx`:
+Run the local stdio MCP server with `uvx`:
 
 ```bash
 uvx --from git+https://github.com/shinerio/codegraph-multi-repo-mcp.git codegraph-multi-repo-mcp
 ```
 
+Run a shareable streamable HTTP MCP server:
+
+```bash
+uvx --from git+https://github.com/shinerio/codegraph-multi-repo-mcp.git \
+  codegraph-multi-repo-mcp \
+  --transport streamable-http \
+  --host 0.0.0.0 \
+  --port 8000 \
+  --path /mcp
+```
+
+The HTTP endpoint is:
+
+```text
+http://localhost:8000/mcp
+```
+
 ## MCP Client Configuration
 
+Use stdio for local clients. Use streamable HTTP when the server is deployed on
+a shared host.
+
 ### Codex
+
+Local stdio:
 
 Add this to `~/.codex/config.toml`:
 
@@ -69,7 +91,17 @@ If your repository config is not in the default location, pass it explicitly:
 CODEGRAPH_MULTI_REPO_CONFIG = "/absolute/path/to/repos.yaml"
 ```
 
+Remote streamable HTTP:
+
+```toml
+[mcp_servers.codegraph-multi-repo]
+url = "https://your-server.example.com/mcp"
+tool_timeout_sec = 120
+```
+
 ### Claude Code
+
+Local stdio:
 
 ```bash
 claude mcp add --transport stdio --scope user \
@@ -84,6 +116,14 @@ claude mcp add --transport stdio --scope user \
   --env CODEGRAPH_MULTI_REPO_CONFIG=/absolute/path/to/repos.yaml \
   codegraph-multi-repo \
   -- uvx --from git+https://github.com/shinerio/codegraph-multi-repo-mcp.git codegraph-multi-repo-mcp
+```
+
+Remote streamable HTTP:
+
+```bash
+claude mcp add --transport http --scope user \
+  codegraph-multi-repo \
+  https://your-server.example.com/mcp
 ```
 
 ### Generic MCP JSON
@@ -102,6 +142,41 @@ claude mcp add --transport stdio --scope user \
   }
 }
 ```
+
+For streamable HTTP clients, configure the server URL instead:
+
+```json
+{
+  "mcpServers": {
+    "codegraph-multi-repo": {
+      "url": "https://your-server.example.com/mcp"
+    }
+  }
+}
+```
+
+## Remote Deployment
+
+On the server:
+
+1. Install Python 3.11+, `uv`, and the local `codegraph` CLI.
+2. Clone or mount the repositories you want to expose.
+3. Build CodeGraph indexes in those repositories.
+4. Create `~/.config/codegraph-multi-repo-mcp/repos.yaml` with server-local paths.
+5. Start the streamable HTTP server:
+
+```bash
+uvx --from git+https://github.com/shinerio/codegraph-multi-repo-mcp.git \
+  codegraph-multi-repo-mcp-http
+```
+
+`codegraph-multi-repo-mcp-http` binds to `0.0.0.0:8000` and serves MCP at
+`/mcp`.
+
+For public or team-facing deployments, put this behind TLS and authentication
+using a reverse proxy or gateway. The server exposes CodeGraph output for every
+repository listed in `repos.yaml`, so do not publish it unauthenticated unless
+those repositories are intended to be visible to all users.
 
 ## Development
 
