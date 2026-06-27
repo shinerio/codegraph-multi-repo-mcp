@@ -22,14 +22,36 @@ codegraph --help
 
 ## 快速开始
 
-先在默认位置创建仓库配置文件：
+先创建默认配置目录：
 
 ```bash
 mkdir -p ~/.config/codegraph-multi-repo-mcp
-$EDITOR ~/.config/codegraph-multi-repo-mcp/repos.yaml
 ```
 
-在配置里加入已经建立 CodeGraph 索引的本地仓库：
+仓库配置会影响 `ask_multi_repo` 和 `trace_across_repos` 的自动路由效果，尤其是 `description`、`tags`、`aliases`。这些字段不只是展示信息，建议让 AI agent 根据仓库内容生成和维护，而不是完全手写。
+
+首次生成配置时，可以把下面这段提示词发给本机 AI 编程助手，例如 Codex 或 Claude Code：
+
+```text
+请帮我为 codegraph-multi-repo-mcp 生成仓库配置文件。
+
+要求：
+1. 扫描我指定的本地仓库目录，确认每个仓库路径存在。
+2. 优先检查每个仓库是否有 .codegraph 目录；没有索引的仓库请列出来提醒我先运行 CodeGraph 初始化。
+3. 为每个仓库生成稳定、简短、唯一的 name。
+4. 根据 README、包名、目录结构、主要源码、配置文件推断 description、tags、aliases。
+5. description 写清楚仓库的业务职责和主要能力，方便自然语言问题路由。
+6. tags 使用业务域、技术栈、系统类型、关键模块等短词。
+7. aliases 使用团队可能会说出的简称、历史名称、服务名、模块名或产品名。
+8. 写入 ~/.config/codegraph-multi-repo-mcp/repos.yaml；如果文件已存在，请保留已有有效配置，只更新变化的仓库并追加新仓库。
+9. 生成后帮我检查 YAML 格式、重复 name、路径是否存在，并总结哪些仓库没有 CodeGraph 索引。
+
+仓库根目录列表：
+- /path/to/repo-a
+- /path/to/repo-b
+```
+
+配置格式如下：
 
 ```yaml
 settings:
@@ -46,6 +68,8 @@ repos:
     tags: [eda, java, workflow]
     aliases: [eda-platform]
 ```
+
+后续要更新已有仓库配置或添加新仓库，也建议继续让 AI agent 修改同一个文件。给它新增仓库路径，并要求它保留已有 `name` 稳定、只在职责变化时更新 `description`，把新出现的业务域、技术栈和常用叫法补进 `tags` / `aliases`。
 
 本地 stdio 模式启动：
 
