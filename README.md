@@ -1,30 +1,35 @@
 # CodeGraph Multi-Repo MCP
 
-Standalone Python MCP server that exposes multi-repository CodeGraph exploration to MCP-compatible AI agents.
+一个独立的 Python MCP 服务，用于把本地多个仓库的 CodeGraph 能力暴露给支持 MCP 的 AI 编程助手，例如 Codex、Claude Code 等。
 
-## Requirements
+它可以在两种模式下运行：
+
+- `stdio`：适合本机 Codex / Claude Code 直接拉起进程使用。
+- `streamable-http`：适合部署到服务端，通过 HTTP endpoint 共享给团队或多个客户端使用。
+
+## 环境要求
 
 - Python 3.11+
-- [uv](https://docs.astral.sh/uv/) for `uvx` installation
-- Local `codegraph` CLI available on `PATH`
-- Local repositories indexed with CodeGraph
+- [uv](https://docs.astral.sh/uv/)，用于通过 `uvx` 启动
+- 本机或服务端可执行的 `codegraph` CLI，并且在 `PATH` 中
+- 要查询的仓库已经完成 CodeGraph 索引
 
-Check CodeGraph:
+检查 CodeGraph 是否可用：
 
 ```bash
 codegraph --help
 ```
 
-## Quick Start
+## 快速开始
 
-Create a repository config in the default location:
+先在默认位置创建仓库配置文件：
 
 ```bash
 mkdir -p ~/.config/codegraph-multi-repo-mcp
 $EDITOR ~/.config/codegraph-multi-repo-mcp/repos.yaml
 ```
 
-Add repositories that already have a local CodeGraph index:
+在配置里加入已经建立 CodeGraph 索引的本地仓库：
 
 ```yaml
 settings:
@@ -42,13 +47,13 @@ repos:
     aliases: [eda-platform]
 ```
 
-Run the local stdio MCP server with `uvx`:
+本地 stdio 模式启动：
 
 ```bash
 uvx --from git+https://github.com/shinerio/codegraph-multi-repo-mcp.git codegraph-multi-repo-mcp
 ```
 
-Run a shareable streamable HTTP MCP server:
+可共享的 streamable HTTP 模式启动：
 
 ```bash
 uvx --from git+https://github.com/shinerio/codegraph-multi-repo-mcp.git \
@@ -59,22 +64,27 @@ uvx --from git+https://github.com/shinerio/codegraph-multi-repo-mcp.git \
   --path /mcp
 ```
 
-The HTTP endpoint is:
+默认 HTTP endpoint：
 
 ```text
 http://localhost:8000/mcp
 ```
 
-## MCP Client Configuration
+也可以使用专门的 HTTP 启动命令：
 
-Use stdio for local clients. Use streamable HTTP when the server is deployed on
-a shared host.
+```bash
+uvx --from git+https://github.com/shinerio/codegraph-multi-repo-mcp.git codegraph-multi-repo-mcp-http
+```
+
+`codegraph-multi-repo-mcp-http` 默认监听 `0.0.0.0:8000`，并在 `/mcp` 路径提供 MCP 服务。
+
+## MCP 客户端配置
+
+本机使用建议选择 stdio。部署到共享服务器时，建议选择 streamable HTTP。
 
 ### Codex
 
-Local stdio:
-
-Add this to `~/.codex/config.toml`:
+本地 stdio 配置，写入 `~/.codex/config.toml`：
 
 ```toml
 [mcp_servers.codegraph-multi-repo]
@@ -84,14 +94,14 @@ startup_timeout_sec = 20
 tool_timeout_sec = 120
 ```
 
-If your repository config is not in the default location, pass it explicitly:
+如果你的仓库配置文件不在默认位置，可以显式传入：
 
 ```toml
 [mcp_servers.codegraph-multi-repo.env]
 CODEGRAPH_MULTI_REPO_CONFIG = "/absolute/path/to/repos.yaml"
 ```
 
-Remote streamable HTTP:
+远程 streamable HTTP 配置：
 
 ```toml
 [mcp_servers.codegraph-multi-repo]
@@ -101,7 +111,7 @@ tool_timeout_sec = 120
 
 ### Claude Code
 
-Local stdio:
+本地 stdio 配置：
 
 ```bash
 claude mcp add --transport stdio --scope user \
@@ -109,7 +119,7 @@ claude mcp add --transport stdio --scope user \
   -- uvx --from git+https://github.com/shinerio/codegraph-multi-repo-mcp.git codegraph-multi-repo-mcp
 ```
 
-If your repository config is not in the default location:
+如果你的仓库配置文件不在默认位置：
 
 ```bash
 claude mcp add --transport stdio --scope user \
@@ -118,7 +128,7 @@ claude mcp add --transport stdio --scope user \
   -- uvx --from git+https://github.com/shinerio/codegraph-multi-repo-mcp.git codegraph-multi-repo-mcp
 ```
 
-Remote streamable HTTP:
+远程 streamable HTTP 配置：
 
 ```bash
 claude mcp add --transport http --scope user \
@@ -126,7 +136,9 @@ claude mcp add --transport http --scope user \
   https://your-server.example.com/mcp
 ```
 
-### Generic MCP JSON
+### 通用 MCP JSON
+
+本地 stdio：
 
 ```json
 {
@@ -143,7 +155,7 @@ claude mcp add --transport http --scope user \
 }
 ```
 
-For streamable HTTP clients, configure the server URL instead:
+streamable HTTP：
 
 ```json
 {
@@ -155,30 +167,35 @@ For streamable HTTP clients, configure the server URL instead:
 }
 ```
 
-## Remote Deployment
+## 服务端部署
 
-On the server:
+在服务端准备环境：
 
-1. Install Python 3.11+, `uv`, and the local `codegraph` CLI.
-2. Clone or mount the repositories you want to expose.
-3. Build CodeGraph indexes in those repositories.
-4. Create `~/.config/codegraph-multi-repo-mcp/repos.yaml` with server-local paths.
-5. Start the streamable HTTP server:
+1. 安装 Python 3.11+、`uv` 和 `codegraph` CLI。
+2. Clone 或挂载你希望暴露给 MCP 的代码仓库。
+3. 在这些仓库中建立 CodeGraph 索引。
+4. 创建 `~/.config/codegraph-multi-repo-mcp/repos.yaml`，里面的仓库路径必须是服务端本地路径。
+5. 启动 streamable HTTP 服务：
 
 ```bash
 uvx --from git+https://github.com/shinerio/codegraph-multi-repo-mcp.git \
   codegraph-multi-repo-mcp-http
 ```
 
-`codegraph-multi-repo-mcp-http` binds to `0.0.0.0:8000` and serves MCP at
-`/mcp`.
+如果要修改监听地址、端口或路径：
 
-For public or team-facing deployments, put this behind TLS and authentication
-using a reverse proxy or gateway. The server exposes CodeGraph output for every
-repository listed in `repos.yaml`, so do not publish it unauthenticated unless
-those repositories are intended to be visible to all users.
+```bash
+uvx --from git+https://github.com/shinerio/codegraph-multi-repo-mcp.git \
+  codegraph-multi-repo-mcp \
+  --transport streamable-http \
+  --host 0.0.0.0 \
+  --port 8000 \
+  --path /mcp
+```
 
-## Development
+面向团队或公网部署时，建议在前面加反向代理或网关，启用 TLS 和认证。这个服务会暴露 `repos.yaml` 中列出的仓库的 CodeGraph 查询结果；除非这些仓库本来就可以公开访问，否则不要裸奔到公网。
+
+## 本地开发
 
 ```bash
 python -m venv .venv
@@ -186,7 +203,7 @@ source .venv/bin/activate
 pip install -e ".[dev]"
 ```
 
-On Windows PowerShell:
+Windows PowerShell：
 
 ```powershell
 python -m venv .venv
@@ -194,17 +211,23 @@ python -m venv .venv
 pip install -e ".[dev]"
 ```
 
-## Tools
+运行测试：
 
-- `list_repos`: list configured repositories and index presence.
-- `refresh_repos`: inspect configured repositories and optionally include `codegraph status`.
-- `explore_repo`: run `codegraph explore` against one repository.
-- `ask_multi_repo`: route a question to candidate repositories and explore them concurrently.
-- `trace_across_repos`: search an identifier across repositories.
+```bash
+python -m pytest
+```
 
-## Notes
+## 工具列表
 
-This MCP server does not generate the final natural-language answer. It returns structured evidence and raw CodeGraph output so the calling agent can reason over it.
+- `list_repos`：列出已配置仓库以及索引是否存在。
+- `refresh_repos`：刷新仓库元信息，可选返回 `codegraph status` 输出。
+- `explore_repo`：针对单个仓库运行 `codegraph explore`。
+- `ask_multi_repo`：根据问题自动路由到候选仓库，并发运行 CodeGraph 探索。
+- `trace_across_repos`：跨仓库搜索符号、API、topic、DTO、表名等标识符。
+
+## 说明
+
+这个 MCP 服务不会直接生成最终的自然语言回答。它返回结构化证据和原始 CodeGraph 输出，由调用它的 AI agent 继续推理和组织答案。
 
 ## License
 
