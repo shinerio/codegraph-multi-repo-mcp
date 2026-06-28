@@ -30,27 +30,30 @@ mkdir -p ~/.config/codegraph-multi-repo-mcp
 
 仓库配置会影响 `ask_multi_repo` 和 `trace_across_repos` 的自动路由效果，尤其是 `description`、`language`、`tags`、`aliases`、`components`。这些字段不只是展示信息，建议让 AI agent 根据仓库内容生成和维护，而不是完全手写。
 
-首次生成配置时，可以把下面这段提示词发给本机 AI 编程助手，例如 Codex 或 Claude Code：
+首次生成配置时，可以把下面这段提示词发给本机 AI 编程助手，例如 Codex 或 Claude Code。使用前把 `{{REPOSITORY_SCAN_ROOTS}}` 替换为实际扫描根目录的绝对路径列表，每行一个路径；每个扫描根目录下面可以包含多个仓库。
 
 ```text
 请帮我为 codegraph-multi-repo-mcp 生成仓库配置文件。
 
 要求：
-1. 扫描我指定的本地仓库目录，确认每个仓库路径存在。
-2. 优先检查每个仓库是否有 .codegraph 目录；没有索引的仓库请列出来提醒我先运行 CodeGraph 初始化。
-3. 为每个仓库生成稳定、简短、唯一的 name。
-4. 根据 README、包名、目录结构、主要源码、配置文件推断 description、language、tags、aliases、components。
-5. description 写清楚仓库的业务职责和主要能力，方便自然语言问题路由。
-6. language 写主要编程语言，例如 java、python、typescript；不要把语言重复写进 tags。
-7. tags 使用业务域、系统类型、关键模块等短词，不放编程语言。
-8. aliases 使用团队可能会说出的简称、历史名称、服务名、模块名或产品名。
-9. components 描述仓库内重要可发布组件；Java/Maven 组件请写 groupId 和 artifactId，方便按 Maven 坐标路由。
-10. 写入 ~/.config/codegraph-multi-repo-mcp/repos.yaml；如果文件已存在，请保留已有有效配置，只更新变化的仓库并追加新仓库。
-11. 生成后帮我检查 YAML 格式、重复 name、路径是否存在，并总结哪些仓库没有 CodeGraph 索引。
+1. 把我提供的路径当作扫描根目录列表，支持多个根目录；不要假设每个根目录本身就是唯一仓库。
+2. 对每个扫描根目录递归查找 `.codegraph` 目录；每个 `.codegraph` 的父目录就是一个要配置的仓库根目录。
+3. 只配置带有 `.codegraph` 的仓库根目录；没有 `.codegraph` 的目录不要加入配置，也不要提醒我补配置或初始化，避免扫描和分析过多无关文件。
+4. 递归扫描时跳过 node_modules、target、build、dist、.venv、venv、.idea、.gradle、.mvn、.git 等依赖、构建或工具目录。
+5. 确认每个仓库根目录路径存在，并按真实路径去重。
+6. 为每个仓库生成稳定、简短、唯一的 name。
+7. 根据 README、包名、目录结构、主要源码、配置文件推断 description、language、tags、aliases、components；只分析已发现的 `.codegraph` 仓库根目录。
+8. description 写清楚仓库的业务职责和主要能力，方便自然语言问题路由。
+9. language 写主要编程语言，例如 java、python、typescript；不要把语言重复写进 tags。
+10. tags 使用业务域、系统类型、关键模块等短词，不放编程语言。
+11. aliases 使用团队可能会说出的简称、历史名称、服务名、模块名或产品名。
+12. components 描述仓库内重要可发布组件、服务或模块，优先使用构建系统里的正式组件名。
+13. 对 Java/Maven 仓库，请检查 pom.xml、父子模块、groupId、artifactId；components 中为关键模块写入 name、groupId、artifactId，方便后续按 artifactId 或完整 groupId:artifactId 路由到正确仓库。
+14. 写入 ~/.config/codegraph-multi-repo-mcp/repos.yaml；如果文件已存在，请保留已有有效配置，只更新变化的仓库并追加新仓库。
+15. 生成后帮我检查 YAML 格式、重复 name、路径是否存在，并总结已配置的仓库数量和名称。
 
-仓库根目录列表：
-- /path/to/repo-a
-- /path/to/repo-b
+扫描根目录列表：
+{{REPOSITORY_SCAN_ROOTS}}
 ```
 
 配置格式如下：
@@ -223,6 +226,112 @@ uvx --from git+https://github.com/shinerio/codegraph-multi-repo-mcp.git \
   --port 8000 \
   --path /mcp
 ```
+
+### 以常驻进程运行
+
+上面的命令在前台运行，关闭终端或退出 SSH 后进程会结束。要让 streamable HTTP 服务长期可用，请用进程管理工具把它托管成后台常驻进程。
+
+下面三种方式任选其一。
+
+**方式一：nohup（最简单，临时使用）**
+
+```bash
+nohup uvx --from git+https://github.com/shinerio/codegraph-multi-repo-mcp.git \
+  codegraph-multi-repo-mcp-http \
+  > ~/.config/codegraph-multi-repo-mcp/server.log 2>&1 &
+```
+
+日志写到 `server.log`，停止时用 `pkill -f codegraph-multi-repo-mcp-http`。这种方式不会随系统重启自动拉起，适合临时验证。
+
+**方式二：macOS launchd（开机自启，推荐 macOS 用户）**
+
+创建 `~/Library/LaunchAgents/com.codegraph.multi-repo-mcp.plist`：
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.codegraph.multi-repo-mcp</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/你的用户名/.local/bin/uvx</string>
+    <string>--from</string>
+    <string>git+https://github.com/shinerio/codegraph-multi-repo-mcp.git</string>
+    <string>codegraph-multi-repo-mcp-http</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/Users/你的用户名/.local/bin:/usr/local/bin:/usr/bin:/bin</string>
+  </dict>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/Users/你的用户名/.config/codegraph-multi-repo-mcp/server.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/你的用户名/.config/codegraph-multi-repo-mcp/server.err</string>
+</dict>
+</plist>
+```
+
+把 `你的用户名` 换成实际用户名（`uvx` 路径用 `which uvx` 确认，`codegraph` 也要在 `PATH` 里）。加载并启动：
+
+```bash
+launchctl load ~/Library/LaunchAgents/com.codegraph.multi-repo-mcp.plist
+launchctl list | grep codegraph
+```
+
+停止或卸载：
+
+```bash
+launchctl unload ~/Library/LaunchAgents/com.codegraph.multi-repo-mcp.plist
+```
+
+**方式三：Linux systemd（开机自启，推荐服务器部署）**
+
+创建 `~/.config/systemd/user/codegraph-multi-repo-mcp.service`：
+
+```ini
+[Unit]
+Description=CodeGraph Multi-Repo MCP (streamable HTTP)
+After=network.target
+
+[Service]
+ExecStart=%h/.local/bin/uvx --from git+https://github.com/shinerio/codegraph-multi-repo-mcp.git codegraph-multi-repo-mcp-http
+Restart=always
+RestartSec=3
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+
+[Install]
+WantedBy=default.target
+```
+
+启用并启动：
+
+```bash
+systemctl --user daemon-reload
+systemctl --user enable --now codegraph-multi-repo-mcp.service
+systemctl --user status codegraph-multi-repo-mcp.service
+```
+
+查看日志用 `journalctl --user -u codegraph-multi-repo-mcp.service -f`。要让用户级服务在未登录时也运行，执行 `loginctl enable-linger $USER`。
+
+### 在客户端完成配置
+
+服务常驻起来之后，把它的 HTTP endpoint 注册到客户端即可。以 Claude Code 为例：
+
+```bash
+claude mcp add --transport http --scope user \
+  codegraph-multi-repo \
+  http://localhost:8000/mcp
+```
+
+部署在远程服务器时，把 URL 换成实际地址，例如 `https://your-server.example.com/mcp`。注册后用 `claude mcp list` 验证，看到 `✔ Connected` 即表示连接成功。其他客户端的配置写法见上文「MCP 客户端配置」。
 
 面向团队或公网部署时，建议在前面加反向代理或网关，启用 TLS 和认证。这个服务会暴露 `repos.yaml` 中列出的仓库的 CodeGraph 查询结果；除非这些仓库本来就可以公开访问，否则不要裸奔到公网。
 
