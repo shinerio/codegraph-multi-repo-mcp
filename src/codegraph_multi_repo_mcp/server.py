@@ -14,6 +14,22 @@ from .repo_registry import RepoRegistry
 
 Transport = Literal["stdio", "sse", "streamable-http"]
 
+ASK_MULTI_REPO_DESCRIPTION = (
+    "PRIMARY code-understanding tool for indexed repositories. Call FIRST when answering questions about how code "
+    "works, architecture, bugs, where something is defined, what calls what, or before editing symbols/files in an "
+    "indexed repository. Accepts a natural-language question or symbol/file names. Returns relevant CodeGraph evidence "
+    "from multiple repositories after routing by repo name, aliases, language, tags, path, description, and component "
+    "coordinates such as groupId:artifactId. Treat returned source as already read and avoid redundant file reads "
+    "unless the result is incomplete. Do not use for non-code questions, pure documentation edits, shell-only tasks, "
+    "or repositories without a .codegraph index."
+)
+
+TRACE_ACROSS_REPOS_DESCRIPTION = (
+    "Trace a specific code identifier across indexed repositories, such as a symbol, API route, DTO, event, topic, "
+    "artifactId, groupId, table, or full groupId:artifactId coordinate. Use when the user asks where an identifier is "
+    "defined, referenced, produced, consumed, routed, or connected across repository boundaries."
+)
+
 
 def build_orchestrator(config: AppConfig | None = None) -> MultiRepoOrchestrator:
     app_config = config or load_config()
@@ -50,7 +66,7 @@ def create_mcp_server(host: str = "127.0.0.1", port: int = 8000, path: str = "/m
             timeout_seconds=timeout_seconds,
         )
 
-    @server.tool()
+    @server.tool(description=ASK_MULTI_REPO_DESCRIPTION)
     async def ask_multi_repo(
         question: str,
         repos: list[str] | None = None,
@@ -65,7 +81,7 @@ def create_mcp_server(host: str = "127.0.0.1", port: int = 8000, path: str = "/m
             max_files_per_repo=max_files_per_repo,
         )
 
-    @server.tool()
+    @server.tool(description=TRACE_ACROSS_REPOS_DESCRIPTION)
     async def trace_across_repos(
         identifier: str,
         repos: list[str] | None = None,

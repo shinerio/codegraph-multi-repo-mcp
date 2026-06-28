@@ -15,6 +15,24 @@ def test_build_orchestrator_from_config(tmp_path: Path) -> None:
     assert orchestrator.registry.get("repo").name == "repo"
 
 
+async def test_tool_descriptions_guide_codegraph_triggering() -> None:
+    mcp_server = server.create_mcp_server()
+
+    tools = {tool.name: tool for tool in await mcp_server.list_tools()}
+
+    ask_description = tools["ask_multi_repo"].description or ""
+    assert "PRIMARY code-understanding tool" in ask_description
+    assert "Call FIRST" in ask_description
+    assert "how code works" in ask_description
+    assert "before editing symbols/files" in ask_description
+    assert "Do not use for non-code questions" in ask_description
+    assert "groupId:artifactId" in ask_description
+
+    trace_description = tools["trace_across_repos"].description or ""
+    assert "Trace a specific code identifier" in trace_description
+    assert "symbol, API route, DTO, event, topic, artifactId, groupId" in trace_description
+
+
 def test_main_configures_streamable_http_transport(monkeypatch) -> None:
     calls: list[tuple[str, str | None]] = []
     created: list[tuple[str, int, str]] = []
