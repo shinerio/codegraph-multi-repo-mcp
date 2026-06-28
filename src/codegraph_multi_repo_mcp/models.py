@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 
 
 class Settings(BaseModel):
@@ -14,6 +14,19 @@ class Settings(BaseModel):
     max_concurrency: int = Field(default=4, ge=1)
 
 
+class ComponentConfig(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    name: str = ""
+    group_id: str = Field(default="", validation_alias=AliasChoices("group_id", "groupId"))
+    artifact_id: str = Field(default="", validation_alias=AliasChoices("artifact_id", "artifactId"))
+
+    @field_validator("name", "group_id", "artifact_id")
+    @classmethod
+    def strip_value(cls, value: str) -> str:
+        return value.strip()
+
+
 class RepoConfig(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -22,6 +35,8 @@ class RepoConfig(BaseModel):
     description: str = ""
     tags: list[str] = Field(default_factory=list)
     aliases: list[str] = Field(default_factory=list)
+    language: str | None = None
+    components: list[ComponentConfig] = Field(default_factory=list)
 
     @field_validator("name")
     @classmethod
@@ -30,6 +45,14 @@ class RepoConfig(BaseModel):
         if not stripped:
             raise ValueError("repository name cannot be empty")
         return stripped
+
+    @field_validator("language")
+    @classmethod
+    def normalize_language(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        stripped = value.strip().lower()
+        return stripped or None
 
     @field_validator("path", mode="before")
     @classmethod

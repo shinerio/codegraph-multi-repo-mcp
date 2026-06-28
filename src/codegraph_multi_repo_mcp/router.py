@@ -49,6 +49,22 @@ class RepoRouter:
                 score += 25
                 reasons.append(f"tag:{tag}")
 
+        if repo.language and repo.language.lower() in query_tokens:
+            score += 40
+            reasons.append(f"language:{repo.language}")
+
+        for component in repo.components:
+            coordinate = self._component_coordinate(component.group_id, component.artifact_id)
+            if coordinate and coordinate.lower() in query_lower:
+                score += 120
+                reasons.append(f"component:{coordinate}")
+            if component.artifact_id and component.artifact_id.lower() in query_lower:
+                score += 90
+                reasons.append(f"artifact:{component.artifact_id}")
+            if component.group_id and component.group_id.lower() in query_lower:
+                score += 60
+                reasons.append(f"group:{component.group_id}")
+
         description_tokens = tokenize(repo.description)
         desc_matches = sorted(query_tokens & description_tokens)
         if desc_matches:
@@ -63,3 +79,8 @@ class RepoRouter:
 
         reason = "; ".join(reasons) if reasons else "fallback:config-order"
         return RepoCandidate(repo=repo, score=score, reason=reason)
+
+    def _component_coordinate(self, group_id: str, artifact_id: str) -> str:
+        if not group_id or not artifact_id:
+            return ""
+        return f"{group_id}:{artifact_id}"

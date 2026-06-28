@@ -23,6 +23,11 @@ repos:
     description: Demo repo
     tags: [python, api]
     aliases: [demo-api]
+    language: python
+    components:
+      - name: demo component
+        groupId: com.example
+        artifactId: demo-api
 """,
         encoding="utf-8",
     )
@@ -37,6 +42,10 @@ repos:
     assert config.repos[0].name == "demo"
     assert config.repos[0].path == repo.resolve()
     assert config.repos[0].aliases == ["demo-api"]
+    assert config.repos[0].language == "python"
+    assert len(config.repos[0].components) == 1
+    assert config.repos[0].components[0].group_id == "com.example"
+    assert config.repos[0].components[0].artifact_id == "demo-api"
 
 
 def test_load_config_rejects_duplicate_repo_names(tmp_path: Path) -> None:

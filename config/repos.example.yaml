@@ -9,5 +9,10 @@ repos:
   - name: eda
     path: /Users/shinerio/Workspace/code/eda
     description: EDA application repository
-    tags: [eda, java, workflow]
+    language: java
+    tags: [eda, workflow]
     aliases: [eda-platform]
+    components:
+      - name: eda-platform
+        groupId: com.example.eda
+        artifactId: eda-platform

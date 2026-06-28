@@ -33,6 +33,41 @@ def test_router_matches_aliases_tags_and_description(tmp_path: Path) -> None:
     assert result[0].score >= 15
 
 
+def test_router_matches_language_separately_from_tags(tmp_path: Path) -> None:
+    repos = [
+        repo("java-orders", tmp_path, language="java", tags=["orders"]),
+        repo("python-orders", tmp_path, language="python", tags=["orders"]),
+    ]
+
+    result = RepoRouter(repos).route("java order repository", max_repos=2)
+
+    assert result[0].repo.name == "java-orders"
+    assert "language:java" in result[0].reason
+
+
+def test_router_matches_component_coordinates(tmp_path: Path) -> None:
+    repos = [
+        repo(
+            "orders",
+            tmp_path,
+            language="java",
+            components=[{"group_id": "com.acme.orders", "artifact_id": "order-service"}],
+        ),
+        repo(
+            "billing",
+            tmp_path,
+            language="java",
+            components=[{"group_id": "com.acme.billing", "artifact_id": "billing-service"}],
+        ),
+    ]
+
+    result = RepoRouter(repos).route("Trace com.acme.orders:order-service publish flow", max_repos=2)
+
+    assert result[0].repo.name == "orders"
+    assert result[0].score > result[1].score
+    assert "component:com.acme.orders:order-service" in result[0].reason
+
+
 def test_router_uses_config_order_fallback(tmp_path: Path) -> None:
     repos = [repo("one", tmp_path), repo("two", tmp_path), repo("three", tmp_path)]
 

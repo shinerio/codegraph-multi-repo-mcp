@@ -32,6 +32,8 @@ class RepoRegistry:
                     "description": repo.description,
                     "tags": repo.tags,
                     "aliases": repo.aliases,
+                    "language": repo.language,
+                    "components": [component.model_dump() for component in repo.components],
                     "path_exists": repo.path.exists(),
                     "has_codegraph": (repo.path / ".codegraph").is_dir(),
                 }
